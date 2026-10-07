@@ -1,0 +1,6 @@
+{
+  "name": "Rin no mori - Repostería Japonesa",
+  "description": "Tienda y catálogo interactivo de galletas y repostería artesanal de inspiración japonesa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

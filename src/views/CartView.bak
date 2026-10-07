@@ -1,0 +1,217 @@
+import React, { useState } from 'react';
+import { CartItem, ViewTab } from '../types';
+
+interface CartViewProps {
+  items: CartItem[];
+  onUpdateQuantity: (productId: string, delta: number) => void;
+  onRemoveItem: (productId: string) => void;
+  onOpenCheckout: () => void;
+  setActiveTab: (tab: ViewTab) => void;
+  couponCode: string;
+  setCouponCode: (code: string) => void;
+  discountAmount: number;
+}
+
+export const CartView: React.FC<CartViewProps> = ({
+  items,
+  onUpdateQuantity,
+  onRemoveItem,
+  onOpenCheckout,
+  setActiveTab,
+  couponCode,
+  setCouponCode,
+  discountAmount
+}) => {
+  const [inputCoupon, setInputCoupon] = useState(couponCode);
+  const [couponError, setCouponError] = useState('');
+
+  const subtotal = items.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+  const shipping = items.length > 0 ? 3.00 : 0.00;
+  const total = Math.max(0, subtotal - discountAmount + shipping);
+  const totalItemsCount = items.reduce((acc, item) => acc + item.quantity, 0);
+
+  const handleApplyCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputCoupon.trim().toUpperCase() === 'RIN10') {
+      setCouponCode('RIN10');
+      setCouponError('');
+    } else {
+      setCouponError('Cupón no válido. Pruebe "RIN10" para 10% de descuento.');
+    }
+  };
+
+  return (
+    <div className="w-full max-w-[1200px] mx-auto px-5 md:px-16 py-6 md:py-10 animate-in fade-in duration-300 flex flex-col gap-6">
+      
+      {/* Title & Item Counter */}
+      <div className="flex justify-between items-end border-b border-[#827470]/10 pb-4">
+        <h2 className="font-display font-bold text-2xl md:text-3xl text-[#442a22]">
+          Tu Carrito
+        </h2>
+        <span className="text-xs font-semibold text-[#504441]">
+          {totalItemsCount} {totalItemsCount === 1 ? 'artículo' : 'artículos'}
+        </span>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="py-16 text-center space-y-4 bg-[#fbf2ed] rounded-2xl border border-[#827470]/10 max-w-lg mx-auto w-full my-6 p-8">
+          <div className="w-20 h-20 bg-[#e9e1dc] text-[#442a22] rounded-full flex items-center justify-center mx-auto">
+            <span className="material-symbols-outlined text-4xl">shopping_cart</span>
+          </div>
+          <h3 className="font-display font-bold text-xl text-[#442a22]">Tu carrito está vacío</h3>
+          <p className="text-xs text-[#504441] max-w-xs mx-auto">
+            Descubre nuestras galletas de matcha, hojicha y avellanas recién horneadas.
+          </p>
+          <button
+            onClick={() => setActiveTab('catalog')}
+            className="bg-[#442a22] hover:bg-[#5d4037] text-white font-semibold text-xs px-6 py-3 rounded-xl transition-all active:scale-95"
+          >
+            Explorar Catálogo
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Cart Items List - Left 7 cols */}
+          <div className="lg:col-span-7 flex flex-col gap-4">
+            {items.map(item => (
+              <div
+                key={item.product.id}
+                className="flex gap-4 p-4 bg-[#f5ece7] rounded-xl border border-[#827470]/10 shadow-xs relative group"
+              >
+                {/* Product Image */}
+                <img
+                  src={item.product.image}
+                  alt={item.product.name}
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover shrink-0 border border-[#827470]/10"
+                />
+
+                {/* Info & Quantity controls */}
+                <div className="flex-grow flex flex-col justify-between py-0.5">
+                  <div>
+                    <div className="flex justify-between items-start gap-2">
+                      <h3 className="font-semibold text-sm text-[#1e1b18]">
+                        {item.product.name}
+                      </h3>
+                      <button
+                        onClick={() => onRemoveItem(item.product.id)}
+                        className="text-[#827470] hover:text-[#ba1a1a] p-1 rounded-full transition-colors"
+                        title="Eliminar artículo"
+                      >
+                        <span className="material-symbols-outlined text-sm">close</span>
+                      </button>
+                    </div>
+                    <p className="text-xs text-[#504441] mt-0.5 line-clamp-1">
+                      {item.product.shortDescription}
+                    </p>
+                  </div>
+
+                  <div className="flex justify-between items-center mt-3">
+                    {/* Quantity Selector Pill */}
+                    <div className="flex items-center gap-3 bg-[#e9e1dc] rounded-full px-2 py-1">
+                      <button
+                        onClick={() => onUpdateQuantity(item.product.id, -1)}
+                        className="text-[#504441] hover:text-[#442a22] transition-colors p-1 flex items-center justify-center active:scale-90"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">remove</span>
+                      </button>
+
+                      <span className="text-xs font-semibold text-[#1e1b18] w-4 text-center">
+                        {item.quantity}
+                      </span>
+
+                      <button
+                        onClick={() => onUpdateQuantity(item.product.id, 1)}
+                        className="text-[#504441] hover:text-[#442a22] transition-colors p-1 flex items-center justify-center active:scale-90"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">add</span>
+                      </button>
+                    </div>
+
+                    <span className="font-bold text-sm text-[#442a22]">
+                      ${(item.product.price * item.quantity).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+            ))}
+          </div>
+
+          {/* Order Summary Box & Checkout CTA - Right 5 cols */}
+          <div className="lg:col-span-5 flex flex-col gap-4 sticky top-24">
+            
+            {/* Coupon Code Section */}
+            <form onSubmit={handleApplyCoupon} className="bg-[#fbf2ed] p-4 rounded-xl border border-[#827470]/10 flex flex-col gap-2">
+              <label className="text-xs font-semibold text-[#442a22]">¿Tienes un código de descuento?</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Ej. RIN10"
+                  value={inputCoupon}
+                  onChange={(e) => setInputCoupon(e.target.value)}
+                  className="flex-1 text-xs p-2.5 bg-white rounded-xl border border-[#827470]/20 text-[#1e1b18] focus:outline-none uppercase"
+                />
+                <button
+                  type="submit"
+                  className="bg-[#586427] hover:bg-[#586427]/90 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all active:scale-95 shrink-0"
+                >
+                  Aplicar
+                </button>
+              </div>
+              {couponCode === 'RIN10' && (
+                <p className="text-[11px] text-[#586427] font-semibold">✓ ¡Cupón RIN10 aplicado! (10% de descuento)</p>
+              )}
+              {couponError && (
+                <p className="text-[11px] text-[#ba1a1a]">{couponError}</p>
+              )}
+            </form>
+
+            {/* Order Summary Box matching Screen 1 exact design */}
+            <div className="p-6 bg-[#fbf2ed] rounded-xl border border-[#827470]/10 flex flex-col gap-3 shadow-xs">
+              <h3 className="font-semibold text-sm text-[#442a22] mb-1">
+                Resumen del Pedido
+              </h3>
+
+              <div className="flex justify-between items-center text-xs text-[#504441]">
+                <span>Subtotal</span>
+                <span className="text-[#1e1b18] font-medium">${subtotal.toFixed(2)}</span>
+              </div>
+
+              {discountAmount > 0 && (
+                <div className="flex justify-between items-center text-xs text-[#586427]">
+                  <span>Descuento (RIN10)</span>
+                  <span className="font-semibold">-${discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-xs text-[#504441]">
+                <span>Envío</span>
+                <span className="text-[#1e1b18] font-medium">${shipping.toFixed(2)}</span>
+              </div>
+
+              <div className="h-px w-full bg-[#827470]/15 my-1" />
+
+              <div className="flex justify-between items-center">
+                <span className="font-display font-bold text-lg text-[#442a22]">Total</span>
+                <span className="font-display font-bold text-xl text-[#442a22]">${total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* Checkout Action Button */}
+            <button
+              onClick={onOpenCheckout}
+              className="w-full bg-[#442a22] text-white font-semibold text-sm py-4 rounded-xl hover:bg-[#5d4037] active:scale-98 transition-all duration-200 shadow-sm flex items-center justify-center gap-2"
+            >
+              Proceder al Pago
+              <span className="material-symbols-outlined text-lg">arrow_forward</span>
+            </button>
+
+          </div>
+
+        </div>
+      )}
+
+    </div>
+  );
+};

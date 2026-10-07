@@ -1,0 +1,237 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------
+// NEXTAUTH / AUTH.JS (Etapa B)
+// -------------------------------------
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          Role      @default(USER)
+  
+  accounts      Account[]
+  sessions      Session[]
+  favorites     Favorite[]
+  orders        Order[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// -------------------------------------
+// CATÁLOGO (Etapa A)
+// -------------------------------------
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  
+  products    Product[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id               String         @id @default(cuid())
+  name             String
+  slug             String         @unique
+  description      String?        @db.Text
+  shortDescription String?
+  price            Float
+  stock            Int            @default(0)
+  
+  categoryId       String?
+  category         Category?      @relation(fields: [categoryId], references: [id])
+  
+  featured         Boolean        @default(false)
+  isActive         Boolean        @default(true)
+  tags             String[]       @default([])
+  rating           Float          @default(0.0)
+  reviewCount      Int            @default(0)
+  ingredients      String[]       @default([])
+  
+  images           ProductImage[]
+  favorites        Favorite[]
+  orderItems       OrderItem[]
+  giftBoxItems     GiftBoxItem[]  // Relación con GiftBoxItem
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  url       String
+  alt       String?
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  isMain    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// -------------------------------------
+// COMERCIO (Etapa B)
+// -------------------------------------
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model Order {
+  id              String           @id @default(cuid())
+  orderNumber     String           @unique
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  
+  status          OrderStatus      @default(PENDIENTE)
+  totalAmount     Float
+  subtotal        Float            @default(0)
+  shippingCost    Float            @default(0)
+  
+  items           OrderItem[]
+  giftBoxes       GiftBox[]
+  
+  payment         Payment?
+  shippingAddress ShippingAddress?
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+enum OrderStatus {
+  PENDIENTE
+  PAGADO
+  EN_PREPARACION
+  ENVIADO
+  ENTREGADO
+  CANCELADO
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  orderId       String        @unique
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider      String        // 'stripe', 'mercadopago'
+  transactionId String?
+  status        PaymentStatus @default(PENDING)
+  amount        Float
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model ShippingAddress {
+  id         String   @id @default(cuid())
+  orderId    String   @unique
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fullName   String
+  address    String
+  city       String
+  state      String?
+  zipCode    String?
+  country    String
+  phone      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// -------------------------------------
+// PERSONALIZACIÓN (Etapa C)
+// -------------------------------------
+model GiftBox {
+  id          String         @id @default(cuid())
+  orderId     String
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  size        Int            // 6, 12, 24
+  price       Float
+  flavorTheme String?
+  message     String?
+  ribbonColor String?
+  
+  items       GiftBoxItem[]
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model GiftBoxItem {
+  id        String   @id @default(cuid())
+  giftBoxId String
+  giftBox   GiftBox  @relation(fields: [giftBoxId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+}

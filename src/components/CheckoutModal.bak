@@ -1,0 +1,278 @@
+import React, { useState } from 'react';
+import { CartItem, UserOrder } from '../types';
+
+interface CheckoutModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  items: CartItem[];
+  subtotal: number;
+  shipping: number;
+  discount: number;
+  total: number;
+  onClearCart: () => void;
+  onOrderCreated?: (order: UserOrder) => void;
+}
+
+export const CheckoutModal: React.FC<CheckoutModalProps> = ({
+  isOpen,
+  onClose,
+  items,
+  subtotal,
+  shipping,
+  discount,
+  total,
+  onClearCart,
+  onOrderCreated
+}) => {
+  const [step, setStep] = useState<'form' | 'success'>('form');
+  const [formData, setFormData] = useState({
+    name: 'María García',
+    email: 'maria@ejemplo.com',
+    phone: '55 1234 5678',
+    address: 'Av. Paseo de la Reforma 222, Depto 402, CDMX',
+    notes: 'Favor de entregar por la mañana. Empaque para regalo, por favor.',
+    paymentMethod: 'card'
+  });
+  const [orderNumber, setOrderNumber] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const randomOrder = 'RNM-' + Math.floor(100000 + Math.random() * 900000);
+    setOrderNumber(randomOrder);
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const newOrder: UserOrder = {
+      id: randomOrder,
+      date: dateStr,
+      status: 'En preparación',
+      total,
+      address: formData.address,
+      paymentMethod: formData.paymentMethod === 'card' ? 'Tarjeta' : formData.paymentMethod === 'transfer' ? 'Transferencia' : 'Efectivo',
+      items: items.map(item => ({
+        id: item.product.id,
+        name: item.product.name,
+        price: item.product.price,
+        quantity: item.quantity,
+        image: item.product.image
+      }))
+    };
+
+    if (onOrderCreated) {
+      onOrderCreated(newOrder);
+    }
+
+    setStep('success');
+    onClearCart();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#1e1b18]/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-[#fff8f5] w-full max-w-lg rounded-2xl shadow-2xl border border-[#827470]/15 overflow-hidden my-8">
+        
+        {step === 'form' ? (
+          <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-5 bg-[#f5ece7] border-b border-[#827470]/10 flex justify-between items-center shrink-0">
+              <div>
+                <h3 className="font-display font-bold text-lg text-[#442a22]">Proceder al Pago</h3>
+                <p className="text-xs text-[#504441]">Completa tus datos para recibir tu repostería recién horneada</p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-[#504441] hover:text-[#442a22] p-1 rounded-full text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Form Body */}
+            <div className="p-6 overflow-y-auto space-y-4">
+              
+              {/* Order Quick Summary */}
+              <div className="bg-[#fbf2ed] p-3.5 rounded-xl border border-[#827470]/10 text-xs space-y-1">
+                <div className="flex justify-between font-semibold text-[#442a22]">
+                  <span>Resumen ({items.reduce((acc, item) => acc + item.quantity, 0)} artículos):</span>
+                  <span>${total.toFixed(2)}</span>
+                </div>
+                <p className="text-[#504441] text-[11px] line-clamp-1">
+                  {items.map(i => `${i.quantity}x ${i.product.name}`).join(', ')}
+                </p>
+              </div>
+
+              {/* Personal Info */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-[#586427]">1. Información de Envío</h4>
+                
+                <div>
+                  <label className="block text-xs font-medium text-[#442a22] mb-1">Nombre Completo</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full text-xs p-2.5 bg-white rounded-xl border border-[#827470]/20 text-[#1e1b18] focus:outline-none focus:border-[#586427]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-[#442a22] mb-1">Correo Electrónico</label>
+                    <input
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full text-xs p-2.5 bg-white rounded-xl border border-[#827470]/20 text-[#1e1b18] focus:outline-none focus:border-[#586427]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[#442a22] mb-1">Teléfono</label>
+                    <input
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full text-xs p-2.5 bg-white rounded-xl border border-[#827470]/20 text-[#1e1b18] focus:outline-none focus:border-[#586427]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#442a22] mb-1">Dirección Completa de Entrega</label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="w-full text-xs p-2.5 bg-white rounded-xl border border-[#827470]/20 text-[#1e1b18] focus:outline-none focus:border-[#586427]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#442a22] mb-1">Instrucciones Especiales / Notas de Regalo</label>
+                  <input
+                    type="text"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full text-xs p-2.5 bg-white rounded-xl border border-[#827470]/20 text-[#1e1b18] focus:outline-none focus:border-[#586427]"
+                  />
+                </div>
+              </div>
+
+              {/* Payment Method */}
+              <div className="space-y-2 pt-2 border-t border-[#827470]/10">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-[#586427]">2. Método de Pago</h4>
+                
+                <div className="grid grid-cols-3 gap-2">
+                  <label className={`p-2.5 rounded-xl border text-center cursor-pointer text-xs flex flex-col items-center gap-1 transition-all ${
+                    formData.paymentMethod === 'card'
+                      ? 'border-[#586427] bg-[#dbea9e]/30 text-[#442a22] font-semibold'
+                      : 'border-[#827470]/20 bg-white text-[#504441]'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="card"
+                      checked={formData.paymentMethod === 'card'}
+                      onChange={() => setFormData({ ...formData, paymentMethod: 'card' })}
+                      className="hidden"
+                    />
+                    <span className="material-symbols-outlined text-lg">credit_card</span>
+                    Tarjeta
+                  </label>
+
+                  <label className={`p-2.5 rounded-xl border text-center cursor-pointer text-xs flex flex-col items-center gap-1 transition-all ${
+                    formData.paymentMethod === 'transfer'
+                      ? 'border-[#586427] bg-[#dbea9e]/30 text-[#442a22] font-semibold'
+                      : 'border-[#827470]/20 bg-white text-[#504441]'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="transfer"
+                      checked={formData.paymentMethod === 'transfer'}
+                      onChange={() => setFormData({ ...formData, paymentMethod: 'transfer' })}
+                      className="hidden"
+                    />
+                    <span className="material-symbols-outlined text-lg">account_balance</span>
+                    Transferencia
+                  </label>
+
+                  <label className={`p-2.5 rounded-xl border text-center cursor-pointer text-xs flex flex-col items-center gap-1 transition-all ${
+                    formData.paymentMethod === 'cash'
+                      ? 'border-[#586427] bg-[#dbea9e]/30 text-[#442a22] font-semibold'
+                      : 'border-[#827470]/20 bg-white text-[#504441]'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="cash"
+                      checked={formData.paymentMethod === 'cash'}
+                      onChange={() => setFormData({ ...formData, paymentMethod: 'cash' })}
+                      className="hidden"
+                    />
+                    <span className="material-symbols-outlined text-lg">payments</span>
+                    Efectivo
+                  </label>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer Action */}
+            <div className="p-4 bg-[#f5ece7] border-t border-[#827470]/10 flex items-center justify-between shrink-0">
+              <div>
+                <span className="text-[11px] text-[#504441]">Total a pagar</span>
+                <p className="text-lg font-bold text-[#442a22]">${total.toFixed(2)}</p>
+              </div>
+              <button
+                type="submit"
+                className="bg-[#442a22] hover:bg-[#5d4037] text-white font-semibold text-sm px-6 py-3 rounded-xl transition-all active:scale-95 shadow-md flex items-center gap-2"
+              >
+                Confirmar y Pagar ${total.toFixed(2)}
+                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </button>
+            </div>
+
+          </form>
+        ) : (
+          <div className="p-8 text-center space-y-6 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-[#dbea9e] text-[#5e6a2c] rounded-full flex items-center justify-center mx-auto shadow-sm">
+              <span className="material-symbols-outlined text-3xl font-bold">check</span>
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#586427]">¡Pedido Confirmado!</span>
+              <h3 className="font-display font-extrabold text-2xl text-[#442a22]">¡Gracias por tu pedido!</h3>
+              <p className="text-xs text-[#504441] max-w-sm mx-auto">
+                Tu pedido <span className="font-bold text-[#442a22]">{orderNumber}</span> ya está en el taller de hornado de Rin no mori.
+              </p>
+            </div>
+
+            <div className="bg-[#fbf2ed] p-4 rounded-xl border border-[#827470]/10 text-left text-xs space-y-2">
+              <div className="flex justify-between text-[#442a22] border-b border-[#827470]/10 pb-2 font-semibold">
+                <span>Cliente: {formData.name}</span>
+                <span>{formData.phone}</span>
+              </div>
+              <p className="text-[#504441]">📍 <span className="font-medium text-[#442a22]">{formData.address}</span></p>
+              <p className="text-[#586427] font-medium">🚚 Envío programado hoy antes de las 5:00 PM</p>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-full bg-[#442a22] hover:bg-[#5d4037] text-white font-semibold text-sm py-3.5 rounded-xl transition-transform active:scale-95 shadow-sm"
+            >
+              Volver a la Tienda
+            </button>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};
